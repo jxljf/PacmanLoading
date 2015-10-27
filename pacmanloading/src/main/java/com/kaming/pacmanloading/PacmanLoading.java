@@ -1,0 +1,197 @@
+package com.kaming.pacmanloading;
+
+import android.animation.ValueAnimator;
+import android.annotation.TargetApi;
+import android.content.Context;
+import android.content.res.TypedArray;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.os.Build;
+import android.os.Handler;
+import android.util.AttributeSet;
+import android.util.Log;
+import android.view.View;
+import android.view.animation.LinearInterpolator;
+
+import java.util.Calendar;
+
+/**
+ * Created by Kaming on 2015/10/26.
+ */
+public class PacmanLoading extends View {
+
+    public static final int DEFAULT_PADDING = 5;
+    public static final int DEFAULT_SIZE = 45;
+    public static final int PACMAN_COLOR = 0xFFFF00;
+    public static final int BEAN_COLOR = 0xFFB8AE;
+    public static final int BEAN_NUMBER = 17;
+    public static final float PACMAN_SIZE_MULTIPLE = 8.7f;
+
+    private int mPadding;
+    private int mPacmanColor;
+    private int mBeanColor;
+    private Paint mPacmanPaint;
+    private Paint mBeanPaint;
+    private boolean mHasAnimation;
+    private float degrees1, degrees2;
+    private int secDegrees;
+    private int widthHalf,heightHalf;
+
+    public PacmanLoading(Context context) {
+        super(context);
+        init(null, 0);
+    }
+
+    public PacmanLoading(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init(attrs, 0);
+    }
+
+    public PacmanLoading(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init(attrs, defStyleAttr);
+    }
+
+    private void init(AttributeSet attrs, int defStyleAttr) {
+        final TypedArray a = getContext().obtainStyledAttributes(attrs, R.styleable.PacmanLoading, defStyleAttr, 0);
+        mPacmanColor = a.getColor(R.styleable.PacmanLoading_pacman_color, PACMAN_COLOR);
+        mBeanColor = a.getColor(R.styleable.PacmanLoading_bean_color, BEAN_COLOR);
+        a.recycle();
+        mPacmanPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mPacmanPaint.setColor(mPacmanColor);
+        mPacmanPaint.setStyle(Paint.Style.FILL);
+        mPacmanPaint.setStrokeWidth(10.0f);
+        mBeanPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mBeanPaint.setColor(mBeanColor);
+        mBeanPaint.setStyle(Paint.Style.FILL);
+        mHandler.sendEmptyMessage(10);
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int width = measureDimension(dp2px(DEFAULT_SIZE), widthMeasureSpec);
+        int height = measureDimension(dp2px(DEFAULT_SIZE), heightMeasureSpec);
+        int horPadding = Math.max(getPaddingLeft(), getPaddingRight());
+        int verPadding = Math.max(getPaddingTop(), getPaddingBottom());
+        mPadding = Math.max(horPadding, verPadding);
+        if (mPadding < DEFAULT_PADDING){
+            mPadding = dp2px(DEFAULT_PADDING);
+        }
+        setMeasuredDimension(width, height);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (!mHasAnimation) {
+            mHasAnimation = true;
+            applyAnimation();
+        }
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        widthHalf = getWidth() / 2;
+        heightHalf = getHeight() / 2;
+        drawTimeCircle(canvas);
+        canvas.save();
+        canvas.rotate(secDegrees , widthHalf , widthHalf);
+        drawPacman(canvas);
+        canvas.restore();
+    }
+
+    private void drawTimeCircle(Canvas canvas) {
+        float radius = getWidth() / 50;
+        mBeanPaint.setAlpha(255);
+        canvas.save();
+        for (int i = 0; i < BEAN_NUMBER; i++) {
+            canvas.drawCircle(widthHalf, heightHalf / PACMAN_SIZE_MULTIPLE, radius, mBeanPaint);
+            canvas.rotate(360 / BEAN_NUMBER, widthHalf, heightHalf);
+        }
+        canvas.restore();
+    }
+
+    private void drawPacman(Canvas canvas) {
+        canvas.save();
+
+        canvas.translate(widthHalf, heightHalf / PACMAN_SIZE_MULTIPLE);
+        canvas.rotate(degrees1);
+        mPacmanPaint.setAlpha(255);
+        RectF rectF1 = new RectF(-widthHalf / PACMAN_SIZE_MULTIPLE, -heightHalf / PACMAN_SIZE_MULTIPLE, widthHalf / PACMAN_SIZE_MULTIPLE, heightHalf / PACMAN_SIZE_MULTIPLE);
+        canvas.drawArc(rectF1, 0, 270, true, mPacmanPaint);
+
+        canvas.restore();
+
+        canvas.save();
+        canvas.translate(widthHalf, heightHalf / PACMAN_SIZE_MULTIPLE);
+        canvas.rotate(degrees2);
+        mPacmanPaint.setAlpha(255);
+        RectF rectF2 = new RectF(-widthHalf / PACMAN_SIZE_MULTIPLE, -heightHalf / PACMAN_SIZE_MULTIPLE, widthHalf / PACMAN_SIZE_MULTIPLE, heightHalf / PACMAN_SIZE_MULTIPLE);
+
+        canvas.drawArc(rectF2, 90, 270, true, mPacmanPaint);
+        canvas.restore();
+    }
+
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
+    private void applyAnimation() {
+        ValueAnimator rotateAnim1 = ValueAnimator.ofFloat(0, 45, 0);
+        rotateAnim1.setDuration(650);
+        rotateAnim1.setRepeatCount(-1);
+        rotateAnim1.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                degrees1 = (float) animation.getAnimatedValue();
+                postInvalidate();
+            }
+        });
+        rotateAnim1.start();
+
+        ValueAnimator rotateAnim2 = ValueAnimator.ofFloat(0, -45, 0);
+        rotateAnim2.setDuration(650);
+        rotateAnim2.setRepeatCount(-1);
+        rotateAnim2.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                degrees2 = (float) animation.getAnimatedValue();
+                postInvalidate();
+            }
+        });
+        rotateAnim2.start();
+    }
+
+    private int measureDimension(int defaultSize, int measureSpec) {
+        int result = defaultSize;
+        int specMode = MeasureSpec.getMode(measureSpec);
+        int specSize = MeasureSpec.getSize(measureSpec);
+        if (specMode == MeasureSpec.EXACTLY) {
+            result = specSize;
+        } else if (specMode == MeasureSpec.AT_MOST) {
+            result = Math.min(defaultSize, specSize);
+        } else {
+            result = defaultSize;
+        }
+        return result;
+    }
+
+    private int dp2px(int dpValue) {
+        return (int) getContext().getResources().getDisplayMetrics().density * dpValue;
+    }
+
+    private Handler mHandler = new Handler(){
+        public void handleMessage(android.os.Message msg) {
+            switch (msg.what) {
+                case 10:
+                    secDegrees += 1 ;
+                    invalidate();
+                    this.sendEmptyMessageDelayed(10, 25);
+                    break;
+                default:
+                    break;
+            }
+        };
+    };
+
+}
