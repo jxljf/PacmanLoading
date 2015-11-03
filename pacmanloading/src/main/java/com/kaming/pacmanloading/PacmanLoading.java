@@ -15,7 +15,10 @@ import android.util.Log;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by Kaming on 2015/10/26.
@@ -29,6 +32,7 @@ public class PacmanLoading extends View {
     public static final int BEAN_NUMBER = 17;
     public static final float PACMAN_SIZE_MULTIPLE = 8.7f;
 
+    private List<Integer> mDegrees;
     private int mPadding;
     private int mPacmanColor;
     private int mBeanColor;
@@ -37,7 +41,8 @@ public class PacmanLoading extends View {
     private boolean mHasAnimation;
     private float degrees1, degrees2;
     private int secDegrees;
-    private int widthHalf,heightHalf;
+    private int widthHalf, heightHalf;
+    private boolean isDrawAllBean = true;
 
     public PacmanLoading(Context context) {
         super(context);
@@ -55,6 +60,7 @@ public class PacmanLoading extends View {
     }
 
     private void init(AttributeSet attrs, int defStyleAttr) {
+        mDegrees = new LinkedList<>();
         final TypedArray a = getContext().obtainStyledAttributes(attrs, R.styleable.PacmanLoading, defStyleAttr, 0);
         mPacmanColor = a.getColor(R.styleable.PacmanLoading_pacman_color, PACMAN_COLOR);
         mBeanColor = a.getColor(R.styleable.PacmanLoading_bean_color, BEAN_COLOR);
@@ -76,7 +82,7 @@ public class PacmanLoading extends View {
         int horPadding = Math.max(getPaddingLeft(), getPaddingRight());
         int verPadding = Math.max(getPaddingTop(), getPaddingBottom());
         mPadding = Math.max(horPadding, verPadding);
-        if (mPadding < DEFAULT_PADDING){
+        if (mPadding < DEFAULT_PADDING) {
             mPadding = dp2px(DEFAULT_PADDING);
         }
         setMeasuredDimension(width, height);
@@ -96,20 +102,52 @@ public class PacmanLoading extends View {
         super.onDraw(canvas);
         widthHalf = getWidth() / 2;
         heightHalf = getHeight() / 2;
-        drawTimeCircle(canvas);
+        if (isDrawAllBean){
+            drawTimeCircle(canvas);
+            isDrawAllBean = false;
+        }else{
+            drawLeftOver(canvas);
+        }
         canvas.save();
-        canvas.rotate(secDegrees , widthHalf , widthHalf);
+        for (int i = 0; i < mDegrees.size(); i++) {
+            int degree = mDegrees.get(i);
+            if (degree == secDegrees){
+                mDegrees.remove(i);
+                Log.d("FUCK","szie : " + mDegrees.size());
+            }
+        }
+        if (Math.floor(secDegrees / 360) > 1 ){
+            isDrawAllBean = true;
+        }
+        canvas.rotate(secDegrees, widthHalf, widthHalf);
         drawPacman(canvas);
+        canvas.restore();
+    }
+
+    private void drawLeftOver(Canvas canvas) {
+        float radius = getWidth() / 50;
+        canvas.save();
+        canvas.rotate(0);
+        int count = mDegrees.size();
+        for (int i = 0; i < count; i++) {
+            mBeanPaint.setAlpha(255);
+            canvas.drawCircle(widthHalf, heightHalf / PACMAN_SIZE_MULTIPLE, radius, mBeanPaint);
+            int degrees = mDegrees.get(i);
+            canvas.rotate(degrees, widthHalf, heightHalf);
+        }
         canvas.restore();
     }
 
     private void drawTimeCircle(Canvas canvas) {
         float radius = getWidth() / 50;
-        mBeanPaint.setAlpha(255);
         canvas.save();
+        canvas.rotate(0);
         for (int i = 0; i < BEAN_NUMBER; i++) {
+            mBeanPaint.setAlpha(255);
             canvas.drawCircle(widthHalf, heightHalf / PACMAN_SIZE_MULTIPLE, radius, mBeanPaint);
-            canvas.rotate(360 / BEAN_NUMBER, widthHalf, heightHalf);
+            int degrees = 360 / BEAN_NUMBER;
+            canvas.rotate(degrees, widthHalf, heightHalf);
+            mDegrees.add(degrees * i);
         }
         canvas.restore();
     }
@@ -180,18 +218,20 @@ public class PacmanLoading extends View {
         return (int) getContext().getResources().getDisplayMetrics().density * dpValue;
     }
 
-    private Handler mHandler = new Handler(){
+    private Handler mHandler = new Handler() {
         public void handleMessage(android.os.Message msg) {
             switch (msg.what) {
                 case 10:
-                    secDegrees += 1 ;
+                    secDegrees += 1;
                     invalidate();
                     this.sendEmptyMessageDelayed(10, 25);
                     break;
                 default:
                     break;
             }
-        };
+        }
+
+        ;
     };
 
 }
